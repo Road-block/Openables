@@ -1,0 +1,6 @@
+package-as: Openables
+
+ignore:
+  - .gitignore
+  - .pkgmeta
+  - README.md

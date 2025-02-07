@@ -1,0 +1,9 @@
+## Interface: 40401, 40402
+## DefaultState: Enabled
+## Title: Openables
+## Author: Roadblock
+## Version: 2.2
+## Notes: Popup Button and keybind for opening containers in your bags.
+## SavedVariablesPerCharacter: OpenablesDB
+
+core.lua

@@ -2,14 +2,17 @@ local addonName,NS = ...
 NS.functions,NS.flags,NS.data,NS.frames = {},{},{},{}
 local Fn,F,D,Fr = NS.functions,NS.flags,NS.data,NS.frames
 local guidtip,guidbtn = "tip431EB727D1F047F099FED219B3B7E444","btn431EB727D1F047F099FED219B3B7E444"
+local next,tinsert,tremove,pairs,ipairs,string_format,string_find =
+			next,tinsert,tremove,pairs,ipairs,string.format,string.find
+local Item, Spell = Item, Spell
+local GetSpellName = C_Spell.GetSpellName
+local GetItemSpell = C_Item.GetItemSpell
 local boxTex = 132761
-local spell_opening = C_Spell.GetSpellName(6247)
+local spell_opening = GetSpellName(6247)
+local picklock = GetSpellName(1804)
 local combat_queue = {}
 local incompatible
-
-local next,tinsert,tremove,pairs,ipairs,string_format,string_find = 
-			next,tinsert,tremove,pairs,ipairs,string.format,string.find
-
+local mtext_open_generic = "/run ClearCursor()if MerchantFrame:IsShown()then HideUIPanel(MerchantFrame)end\n/use %d %d"
 Fr.events = CreateFrame("Frame")
 Fr.events.OnEvent = function(self,event,...)
 	return self[event] and self[event](...)
@@ -43,6 +46,12 @@ Fr.events.PLAYER_LOGIN = function()
 	Fr.scantip = CreateFrame("GameTooltip",guidtip,nil,"GameTooltipTemplate")
 	Fr.scantip:SetOwner(WorldFrame,"ANCHOR_NONE")
 	Fr.scantip:Hide()
+	local _,classID = UnitClassBase("player")
+	if classID == 4 then -- ROGUE
+		if IsPlayerSpell(1804) then
+			F.unlock = true
+		end
+	end
 	Fn.GetOpenPatterns()
 	Fn.CreateButton()
 end
@@ -64,18 +73,21 @@ end
 
 Fr.events.UNIT_SPELLCAST_SENT = function(...)
 	local _,target,castGUID,spellID = ...
-	if (C_Spell.GetSpellName(spellID)) == spell_opening then
+	if (GetSpellName(spellID)) == spell_opening then
 		F.opening = true
 	end
 end
 
 Fr.events.UNIT_SPELLCAST_SUCCEEDED = function(...)
+	local unit,castGUID,spellID = ...
+	local picked_lock = spellID and spellID == 1804
+	if not (F.opening or picked_lock) then return end
 	if F.opening then
 		F.opening = nil
-		Fr.timer.anim:SetDuration(1.0)
-		Fr.timer.anim:SetScript("OnFinished",Fn.SetOpenable)
-		Fr.timer:Play()
 	end
+	Fr.timer.anim:SetDuration(1.0)
+	Fr.timer.anim:SetScript("OnFinished",Fn.SetOpenable)
+	Fr.timer:Play()
 end
 Fr.events.UNIT_SPELLCAST_FAILED = Fr.events.UNIT_SPELLCAST_SUCCEEDED
 Fr.events.UNIT_SPELLCAST_STOP = Fr.events.UNIT_SPELLCAST_SUCCEEDED
@@ -118,6 +130,17 @@ Fn.CreateButton = function()
 	Fr.theButton:SetClampedToScreen(true)
 	Fr.theButton:SetScript("OnDragStart", function(self) if not Fn.InCombat() and IsAltKeyDown() then self:StartMoving() end end)
 	Fr.theButton:SetScript("OnDragStop", function(self) if not Fn.InCombat() then self:StopMovingOrSizing() Fn.PositionSave() end end)
+	Fr.theButton:SetScript("PostClick",function (self,mbutton)
+		if mbutton and mbutton == "RightButton" then
+			D.session_blacklist = D.session_blacklist or {}
+			if self.tooltip and type(self.tooltip)=="number" then
+				D.session_blacklist[self.tooltip] = true
+				Fr.timer.anim:SetDuration(0.2)
+				Fr.timer.anim:SetScript("OnFinished",Fn.SetOpenable)
+				Fr.timer:Play()
+			end
+		end
+	end)
 	Fr.theButton:SetScript("OnEnter", function(self)
 		if self.tooltip then 
 			GameTooltip:SetOwner(self,"ANCHOR_TOP")
@@ -125,8 +148,13 @@ Fn.CreateButton = function()
 				GameTooltip:SetText(self.tooltip)
 				GameTooltip:AddLine("ALT-Click and drag to move")
 			elseif type(self.tooltip)=="number" then
-				GameTooltip:SetItemByID(self.tooltip)
-				GameTooltip:AddDoubleLine("Click to loot container","ALT-Click and drag to move",0,1,0)
+				GameTooltip:SetBagItem(D.bag_id,D.bag_slot_id)
+				if D.item_unlockable then
+					GameTooltip:AddDoubleLine("Click to unlock container","ALT-Click and drag to move",0,1,0)
+				else
+					GameTooltip:AddDoubleLine("Click to loot container","ALT-Click and drag to move",0,1,0)
+				end
+				GameTooltip:AddDoubleLine("Right-Click to blacklist this item", "(Session)",1,0.5,0.25)
 			end
 			GameTooltip:Show()
 		end 
@@ -169,22 +197,19 @@ Fn.GetOpenPatterns = function()
 	D.open_strings[ITEM_OPENABLE] = true
 	local spell_effect
 	for _,spellid in ipairs(D.open_spells) do
-		if not Fr.scantip:IsOwned(WorldFrame) then
-			Fr.scantip:SetOwner(WorldFrame)
-		end
-		Fr.scantip:ClearLines()
-		Fr.scantip:SetSpellByID(spellid)
-		if (Fr.scantip:GetSpell()) then
-			spell_effect = (_G[string_format("%s%s%d",guidtip,"TextLeft",Fr.scantip:NumLines())]:GetText())
-			if spell_effect and spell_effect ~= "" then 
-				D.open_strings[string_format("%s %s",ITEM_SPELL_TRIGGER_ONUSE,spell_effect)] = true
-				spell_effect = nil
-			end
+		if (GetSpellName(spellid)) then
+			local spell = Spell:CreateFromSpellID(spellid)
+			spell:ContinueOnSpellLoad(function()
+				spell_effect = spell:GetSpellDescription()
+				if spell_effect and spell_effect ~= "" then
+					D.open_strings[string_format("%s %s",ITEM_SPELL_TRIGGER_ONUSE,spell_effect)] = true
+					spell_effect = nil
+				end
+			end)
 		end
 	end
-	Fr.scantip:Hide()
 end
-
+-- returns: openable, locked
 Fn.IsOpenable = function()
 	if Fn.InCombat() then
 		if not tContains(combat_queue,Fn.IsOpenable) then
@@ -192,16 +217,20 @@ Fn.IsOpenable = function()
 		end
 		return
 	end
-	
-	for key,_ in pairs(D.open_strings) do
-		for i=1,Fr.scantip:NumLines() do
-			if string_find(_G[string_format("%s%s%d",guidtip,"TextLeft",i)]:GetText(),key,1,true) then
-				return true
+	local openable, locked, tip_line = false, false, nil
+	for i=1,Fr.scantip:NumLines() do
+		tip_line = _G[string_format("%s%s%d",guidtip,"TextLeft",i)]:GetText()
+		if tip_line == _G.LOCKED then
+			locked = true
+		end
+		for key,_ in pairs(D.open_strings) do
+			if string_find(tip_line,key,1,true) then
+				openable = true
 			end
 		end
 	end
 
-	return false	
+	return openable,locked
 end
 
 -- workaround for the bugged "Pet Supplies" bags/consumables that don't have a :use
@@ -220,16 +249,27 @@ Fn.SetOpenable = function()
 			if not D.bag_id then
 				local item_id = C_Container.GetContainerItemID(bag,slot)
 				if item_id then
+				if D.session_blacklist and D.session_blacklist[item_id] then
+					break
+				end
 					if not Fr.scantip:IsOwned(WorldFrame) then
 						Fr.scantip:SetOwner(WorldFrame)
 					end
 					Fr.scantip:ClearLines()
 					Fr.scantip:SetBagItem(bag,slot)
-					if D.open_itemids[item_id] or Fn.IsOpenable() then
+					local openable, locked = Fn.IsOpenable()
+					if D.open_itemids[item_id] or openable then
 						D.bag_id = bag
 						D.bag_slot_id = slot
 						D.item_id = item_id
 						D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
+						break
+					elseif F.unlock and locked then
+						D.bag_id = bag
+						D.bag_slot_id = slot
+						D.item_id = item_id
+						D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
+						D.item_unlockable = locked
 						break
 					end
 				end
@@ -243,8 +283,21 @@ Fn.SetOpenable = function()
 	Fr.scantip:Hide()
 
 	if D.bag_id then
-		Fr.theButton:SetAttribute("type1", "macro")
-		Fr.theButton:SetAttribute("macrotext1", string_format("/run ClearCursor() if MerchantFrame:IsShown() then HideUIPanel(MerchantFrame) end\n/use %d %d",D.bag_id,D.bag_slot_id))
+		if D.item_unlockable then
+			Fr.theButton:SetAttribute("macrotext1",nil)
+			Fr.theButton:SetAttribute("type1",nil)
+			Fr.theButton:SetAttribute("type1", "spell")
+			Fr.theButton:SetAttribute("spell1", picklock)
+			Fr.theButton:SetAttribute("target-bag", tostring(D.bag_id))
+			Fr.theButton:SetAttribute("target-slot", tostring(D.bag_slot_id))
+		else
+			Fr.theButton:SetAttribute("target-bag",nil)
+			Fr.theButton:SetAttribute("target-slot",nil)
+			Fr.theButton:SetAttribute("spell1",nil)
+			Fr.theButton:SetAttribute("type1",nil)
+			Fr.theButton:SetAttribute("type1", "macro")
+			Fr.theButton:SetAttribute("macrotext1", string_format(mtext_open_generic,D.bag_id,D.bag_slot_id))
+		end
 		Fr.theButton.icon:SetTexture(D.item_icon)
 		Fr.theButton.tooltip = D.item_id
  		Fr.theButton:Show()
@@ -268,6 +321,7 @@ end
 
 _G.BINDING_HEADER_OPENABLESHEADER = addonName
 _G["BINDING_NAME_CLICK btn431EB727D1F047F099FED219B3B7E444:LeftButton"] = string_format("%s %s",_G.LOOT,_G.ITEM_CONTAINER)
+_G["BINDING_NAME_CLICK btn431EB727D1F047F099FED219B3B7E444:RightButton"] = "Blacklist Container (Session)"
 
 -- debug
 _G[addonName] = NS

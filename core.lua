@@ -263,6 +263,7 @@ Fn.SetOpenable = function()
 						D.bag_slot_id = slot
 						D.item_id = item_id
 						D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
+						D.item_unlockable = false
 						break
 					elseif F.unlock and locked then
 						D.bag_id = bag

@@ -2,7 +2,7 @@
 ## DefaultState: Enabled
 ## Title: Openables
 ## Author: Roadblock
-## Version: 2.31
+## Version: 2.32
 ## Notes: Popup Button and keybind for opening containers in your bags.
 ## SavedVariablesPerCharacter: OpenablesDB
 

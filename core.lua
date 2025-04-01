@@ -192,7 +192,7 @@ Fn.CreateButton = function()
 	
 end
 
-D.open_spells,D.open_strings = {58172,98681,102923,109946,109947,109948,131934,131935,131936,132278,132279,142397,142901},{}
+D.open_spells,D.open_strings = {58172,98681,101805,102923,109946,109947,109948,131934,131935,131936,132278,132279,142397,142901},{}
 Fn.GetOpenPatterns = function()
 	D.open_strings[ITEM_OPENABLE] = true
 	local spell_effect

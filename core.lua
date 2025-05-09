@@ -249,29 +249,28 @@ Fn.SetOpenable = function()
 			if not D.bag_id then
 				local item_id = C_Container.GetContainerItemID(bag,slot)
 				if item_id then
-				if D.session_blacklist and D.session_blacklist[item_id] then
-					break
-				end
-					if not Fr.scantip:IsOwned(WorldFrame) then
-						Fr.scantip:SetOwner(WorldFrame)
-					end
-					Fr.scantip:ClearLines()
-					Fr.scantip:SetBagItem(bag,slot)
-					local openable, locked = Fn.IsOpenable()
-					if D.open_itemids[item_id] or openable then
-						D.bag_id = bag
-						D.bag_slot_id = slot
-						D.item_id = item_id
-						D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
-						D.item_unlockable = false
-						break
-					elseif F.unlock and locked then
-						D.bag_id = bag
-						D.bag_slot_id = slot
-						D.item_id = item_id
-						D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
-						D.item_unlockable = locked
-						break
+					if not (D.session_blacklist and D.session_blacklist[item_id]) then
+						if not Fr.scantip:IsOwned(WorldFrame) then
+							Fr.scantip:SetOwner(WorldFrame)
+						end
+						Fr.scantip:ClearLines()
+						Fr.scantip:SetBagItem(bag,slot)
+						local openable, locked = Fn.IsOpenable()
+						if D.open_itemids[item_id] or openable then
+							D.bag_id = bag
+							D.bag_slot_id = slot
+							D.item_id = item_id
+							D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
+							D.item_unlockable = false
+							break
+						elseif F.unlock and locked then
+							D.bag_id = bag
+							D.bag_slot_id = slot
+							D.item_id = item_id
+							D.item_icon = C_Container.GetContainerItemInfo(bag,slot).iconFileID
+							D.item_unlockable = locked
+							break
+						end
 					end
 				end
 			end

@@ -1,4 +1,4 @@
-## Interface: 40402
+## Interface: 50500
 ## DefaultState: Enabled
 ## Title: Openables
 ## Author: Roadblock

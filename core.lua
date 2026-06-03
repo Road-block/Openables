@@ -117,7 +117,7 @@ Fn.CreateButton = function()
 		return
 	end
 	
-	Fr.theButton = CreateFrame("Button",guidbtn,UIParent,"SecureActionButtonTemplate,ActionButtonTemplate")
+	Fr.theButton = CreateFrame("Button",guidbtn,UIParent,"SecureActionButtonTemplate,BackdropTemplate")--ActionButtonTemplate")
 	Fr.theButton:Hide()
 	Fr.theButton:SetWidth(36)
 	Fr.theButton:SetHeight(36)
@@ -130,6 +130,14 @@ Fn.CreateButton = function()
 	Fr.theButton:SetClampedToScreen(true)
 	Fr.theButton:SetScript("OnDragStart", function(self) if not Fn.InCombat() and IsAltKeyDown() then self:StartMoving() end end)
 	Fr.theButton:SetScript("OnDragStop", function(self) if not Fn.InCombat() then self:StopMovingOrSizing() Fn.PositionSave() end end)
+	Fr.theButton:SetScript("PreClick",function (self,mbutton,down)
+		if mbutton and mbutton == "LeftButton" and not IsAltKeyDown() then
+			ClearCursor()
+			if MerchantFrame:IsShown() then
+				HideUIPanel(MerchantFrame)
+			end
+		end
+	end)
 	Fr.theButton:SetScript("PostClick",function (self,mbutton)
 		if mbutton and mbutton == "RightButton" then
 			D.session_blacklist = D.session_blacklist or {}
@@ -161,7 +169,8 @@ Fn.CreateButton = function()
 	end)
 	Fr.theButton:SetScript("OnLeave",GameTooltip_Hide)
 
- 	Fr.theButton.icon = _G[string_format("%sIcon",guidbtn)]
+ 	Fr.theButton.icon = Fr.theButton:CreateTexture()--_G[string_format("%sIcon",guidbtn)]
+ 	Fr.theButton.icon:SetAllPoints()
 	Fr.theButton.icon:SetTexture(boxTex)
 	Fr.theButton.tooltip = BROWSE_NO_RESULTS
 	
@@ -286,6 +295,8 @@ Fn.SetOpenable = function()
 		if D.item_unlockable then
 			Fr.theButton:SetAttribute("macrotext1",nil)
 			Fr.theButton:SetAttribute("type1",nil)
+			Fr.theButton:SetAttribute("item",nil)
+			Fr.theButton:SetAttribute("useOnKeyDown", false)
 			Fr.theButton:SetAttribute("type1", "spell")
 			Fr.theButton:SetAttribute("spell1", picklock)
 			Fr.theButton:SetAttribute("target-bag", tostring(D.bag_id))
@@ -295,8 +306,11 @@ Fn.SetOpenable = function()
 			Fr.theButton:SetAttribute("target-slot",nil)
 			Fr.theButton:SetAttribute("spell1",nil)
 			Fr.theButton:SetAttribute("type1",nil)
-			Fr.theButton:SetAttribute("type1", "macro")
-			Fr.theButton:SetAttribute("macrotext1", string_format(mtext_open_generic,D.bag_id,D.bag_slot_id))
+			Fr.theButton:SetAttribute("useOnKeyDown", false)
+			Fr.theButton:SetAttribute("type1","item")
+			Fr.theButton:SetAttribute("item1",string_format("%d %d",D.bag_id,D.bag_slot_id))
+			--Fr.theButton:SetAttribute("type1", "macro")
+			--Fr.theButton:SetAttribute("macrotext1", string_format("/use %d %d",D.bag_id,D.bag_slot_id))
 		end
 		Fr.theButton.icon:SetTexture(D.item_icon)
 		Fr.theButton.tooltip = D.item_id
@@ -306,7 +320,7 @@ Fn.SetOpenable = function()
 		Fr.theButton.tooltip = BROWSE_NO_RESULTS
  		Fr.theButton:Hide()
 	end
-	
+
 end
 
 Fn.SkinButton = function()

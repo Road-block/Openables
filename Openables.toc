@@ -1,8 +1,8 @@
-## Interface: 50503,50504
+## Interface: 50504
 ## DefaultState: Enabled
 ## Title: Openables
 ## Author: Roadblock
-## Version: 2.34
+## Version: 2.35
 ## Category: Inventory
 ## Notes: Popup Button and keybind for opening containers in your bags.
 ## SavedVariablesPerCharacter: OpenablesDB

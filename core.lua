@@ -56,6 +56,10 @@ Fr.events.PLAYER_LOGIN = function()
 	Fn.CreateButton()
 end
 
+Fr.events.UPDATE_BINDINGS = function()
+	Fn.SetHotkeyText()
+end
+
 Fr.events.BAG_UPDATE_DELAYED = function()
 	Fn.SetOpenable()
 end
@@ -106,6 +110,37 @@ Fn.PositionLoad = function()
 	local efscale = Fr.theButton:GetEffectiveScale()
 	Fr.theButton:ClearAllPoints()
 	Fr.theButton:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",posx/efscale,posy/efscale)
+end
+
+Fn.SetHotkeyText = function()
+	if not Fr.theButton then return end
+  if Fr.theButton then
+    local key1, key2 = GetBindingKey("CLICK btn431EB727D1F047F099FED219B3B7E444:LeftButton")
+    local keytext = ""
+    if key1 then
+      keytext = GetBindingText(key1,true)
+    elseif key2 then
+      keytext = GetBindingText(key2,true)
+    end
+    Fr.theButton.hotkey:SetText(keytext)
+  end
+end
+
+Fn.PruneDefaultOpen = function(tooltip)
+	local tipName = tooltip and tooltip:GetName() or "GameTooltip"
+	for i=1,5 do
+		local line = _G[tipName.."TextLeft"..i]
+		if line then
+			local lineText = line:GetText()
+			if lineText and lineText:trim() ~= "" then
+				for key,_ in pairs(D.open_strings) do
+					if string_find(lineText,key,1,true) then
+						line:SetAlpha(0)
+					end
+				end
+			end
+		end
+	end
 end
 
 Fn.CreateButton = function()
@@ -163,16 +198,22 @@ Fn.CreateButton = function()
 					GameTooltip:AddDoubleLine("Click to loot container","ALT-Click and drag to move",0,1,0)
 				end
 				GameTooltip:AddDoubleLine("Right-Click to blacklist this item", "(Session)",1,0.5,0.25)
+				Fn.PruneDefaultOpen()
 			end
 			GameTooltip:Show()
 		end 
 	end)
 	Fr.theButton:SetScript("OnLeave",GameTooltip_Hide)
 
- 	Fr.theButton.icon = Fr.theButton:CreateTexture()--_G[string_format("%sIcon",guidbtn)]
+ 	Fr.theButton.icon = Fr.theButton:CreateTexture(nil,"BACKGROUND")--_G[string_format("%sIcon",guidbtn)]
  	Fr.theButton.icon:SetAllPoints()
 	Fr.theButton.icon:SetTexture(boxTex)
 	Fr.theButton.tooltip = BROWSE_NO_RESULTS
+	Fr.theButton.hotkey = Fr.theButton:CreateFontString(nil,"ARTWORK","GameFontHighlightSmall")
+	Fr.theButton.hotkey:SetPoint("TOP")
+	Fr.theButton.hotkey:SetSize(36,12)
+	Fr.theButton.HotKey = Fr.theButton.hotkey
+	Fn.SetHotkeyText()
 	
 	if not Fr.timer then
     Fr.timer = Fr.events:CreateAnimationGroup()
@@ -186,6 +227,7 @@ Fn.CreateButton = function()
 	Fr.events:RegisterEvent("PLAYER_REGEN_ENABLED")
 	Fr.events:RegisterEvent("PLAYER_REGEN_DISABLED")
 	Fr.events:RegisterEvent("UNIT_SPELLCAST_SENT")
+	Fr.events:RegisterEvent("UPDATE_BINDINGS")
 	Fr.events:RegisterUnitEvent("UNIT_SPELLCAST_FAILED","player")
 	Fr.events:RegisterUnitEvent("UNIT_SPELLCAST_STOP","player")
 	Fr.events:RegisterUnitEvent("UNIT_SPELLCAST_INTERRUPTED","player")
@@ -194,7 +236,7 @@ Fn.CreateButton = function()
 	Fr.timer.anim:SetDuration(2.0)
 	Fr.timer.anim:SetScript("OnFinished",Fn.PositionLoad)
 	Fr.timer:Play()
-	
+
 	if C_AddOns.IsAddOnLoaded("ElvUI") then
 		Fn.SkinButton()
 	end
@@ -325,8 +367,15 @@ end
 
 Fn.SkinButton = function()
 	local E = unpack(ElvUI)
-	AB = E:GetModule('ActionBars')
-	AB:StyleButton(Fr.theButton)
+	if E and E.GetModule then
+		AB = E:GetModule('ActionBars')
+		if AB and AB.StyleButton then
+			if AB.handledbuttons then
+				AB.handledbuttons[Fr.theButton] = true
+			end
+			AB:StyleButton(Fr.theButton)
+		end
+	end
 end
 
 Fn.InCombat = function()
